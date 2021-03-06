@@ -7,27 +7,15 @@ public class GetLocalOS {
     c_char os = new c_char();
     c_char valid = new c_char();
 
-    public static StringBuilder readintoString(byte[] bytes) 
-	{ 
-		if (bytes == null) 
-			return null; 
-		StringBuilder data = new StringBuilder(); 
-		int i = 0; 
-		while (bytes[i] > 0) 
-		{ 
-            char c = (char) bytes[i];
-			data.append(c);
-			i++; 
-		} 
-		return data;
-	} 
-
-    public static int readIntoInteger(byte[] bytes) {
-        return ByteBuffer.wrap(bytes).getInt();
-    }
-
     public void execute(String IP, int port) {
         try {
+
+            Socket clientSocket = new Socket(IP, port); 
+
+            // create text reader and writer
+            DataInputStream inStream  = new DataInputStream(clientSocket.getInputStream());
+            DataOutputStream outStream = new DataOutputStream(clientSocket.getOutputStream());
+
             int cmdlen = os.getSize() + valid.getSize();
             byte[] buf = new byte[100 + 4 + cmdlen];
             byte[] CmdID = "GetLocalOS".getBytes();
@@ -40,30 +28,21 @@ public class GetLocalOS {
             
             int offset = 104 + valid.getSize();
             System.arraycopy(valid.toByte(), 0, buf, offset, valid.getSize());
-            
 
-            Socket socket = new Socket(IP, port);
-            OutputStream output = socket.getOutputStream();
-            PrintWriter writer = new PrintWriter(output, true);
+            outStream.write(buf, 0, buf.length);
+            outStream.flush();
 
-            byte[] ID_bytes = Arrays.copyOfRange(buf, 0, 99);
-            StringBuilder value = readintoString(ID_bytes);
-            System.out.println(value);
+            byte[] buff_in = new byte[cmdlen];
 
-            ID_bytes = Arrays.copyOfRange(buf, 100, 104);
-            int value1 = readIntoInteger(ID_bytes);
-            System.out.println(value1);
+            inStream.readFully(buff_in);
 
-            ID_bytes = Arrays.copyOfRange(buf, 104, 106);
-            value = readintoString(ID_bytes);
-            System.out.println(value);
+            byte[] incoming_os = Arrays.copyOfRange(buff_in, 0, 16);
+            byte[] incoming_valid = Arrays.copyOfRange(buff_in, 16, 32);
 
-            ID_bytes = Arrays.copyOfRange(buf, 106, 108);
-            value = readintoString(ID_bytes);
-            System.out.println(value);
-            System.out.println("buffer size sent" + buf.length + buf);
-            writer.println(buf);
-            socket.close();
+            this.os.setValue(incoming_os);
+            this.valid.setValue(incoming_valid);
+
+            clientSocket.close();
         } catch (UnknownHostException ex) {
             System.out.println("Server not found: " + ex.getMessage());
         } catch (IOException ex) {

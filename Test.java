@@ -22,20 +22,19 @@ public class Test {
         String text;
         do {
             text = console.readLine();
-            System.out.println(text);
             if (text.toLowerCase().equals("getlocaltime")) {
-                System.out.println("inside here time");
                 GetLocalTime time_obj = new GetLocalTime();
                 time_obj.valid.setValue('1');
                 time_obj.execute(hostname, port);
-                int t = time_obj.time.getValue();
-                System.out.println(t);
+                int timeStamp = time_obj.time.getValue();
+                java.util.Date dateTime=new java.util.Date((long)timeStamp*1000);
+                System.out.println(dateTime);
             } else if (text.toLowerCase().equals("getlocalos")) {
-                System.out.println("inside here");
                 GetLocalOS os_obj = new GetLocalOS();
                 os_obj.valid.setValue('1');
+                os_obj.os.setValue('1');
                 os_obj.execute(hostname, port);
-                char os_value = os_obj.os.getValue();
+                StringBuilder os_value = os_obj.os.getValue();
                 System.out.println(os_value);
             } else {
                 System.out.println("wrong command");

@@ -1,5 +1,7 @@
 import java.net.*;
 import java.io.*;
+import java.util.*;
+import java.nio.ByteBuffer;
 
 public class GetLocalTime {
     c_int time = new c_int();
@@ -8,23 +10,40 @@ public class GetLocalTime {
     public void execute(String IP, int port) {
         try {
 
+            Socket clientSocket = new Socket(IP, port); 
+
+            // create text reader and writer
+            DataInputStream inStream  = new DataInputStream(clientSocket.getInputStream());
+            DataOutputStream outStream = new DataOutputStream(clientSocket.getOutputStream());
+
             int cmdlen = time.getSize() + valid.getSize();
-            System.out.println(cmdlen);
+
             byte[] buf = new byte[100 + 4 + cmdlen];
             byte[] CmdID = "GetLocalTime".getBytes();
             System.arraycopy(CmdID, 0, buf, 0, CmdID.length);
+
             byte[] CmdLength = intToByte(cmdlen);
             System.arraycopy(CmdLength, 0, buf, 100, CmdLength.length);
+
             System.arraycopy(time.toByte(), 0, buf, 104, time.getSize());
+
             int offset = 104 + time.getSize();
             System.arraycopy(valid.toByte(), 0, buf, offset, valid.getSize());
-            Socket socket = new Socket(IP, port);
-            OutputStream output = socket.getOutputStream();
-            PrintWriter writer = new PrintWriter(output, true);
-            System.out.println("buffer size sent" + buf.length + buf);
-            //writer.println(buf);
-            writer.println(buf);
-            socket.close();
+
+            outStream.write(buf, 0, buf.length);
+            outStream.flush();
+
+            byte[] buff_in = new byte[cmdlen];
+
+            inStream.readFully(buff_in);
+
+            byte[] incoming_time = Arrays.copyOfRange(buff_in, 0, 4);
+            byte[] incoming_valid = Arrays.copyOfRange(buff_in, 4, 20);
+
+            this.time.setValue(incoming_time);
+            this.valid.setValue(incoming_valid);
+
+            clientSocket.close();
         } catch (UnknownHostException ex) {
             System.out.println("Server not found: " + ex.getMessage());
         } catch (IOException ex) {

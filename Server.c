@@ -1,8 +1,8 @@
 // Server side C/C++ program to demonstrate Socket programming
 #include <unistd.h>
 #include <stdio.h>
-#include <sys/socket.h>
 #include <stdlib.h>
+#include <sys/socket.h>
 #include <netinet/in.h>
 #include <string.h>
 #include <pthread.h>
@@ -44,149 +44,127 @@ void strip_newline(char *s)
 	}
 }
 
- void GetLocalTime(GET_LOCAL_TIME *dt) {
+ GET_LOCAL_TIME* GetLocalTime(GET_LOCAL_TIME *dt) {
 	dt = malloc(sizeof(GET_LOCAL_TIME));
 	time_t seconds; 
     seconds = time(NULL); 
 	dt->time = seconds;
 	dt->valid = '1';
+	return dt;
  }
 
- void GetLocalOS(GET_LOCAL_OS *ds) {
+ GET_LOCAL_OS* GetLocalOS(GET_LOCAL_OS *ds) {
 	ds = malloc(sizeof(GET_LOCAL_OS));
-	#ifdef _WIN32 
-		ds->OS = "Windows OS";
-		ds->valid = '1'; 
-	
-	#elif __linux__ 
-		ds->OS = "Linum OS";
-		ds->valid = '1'; 
-
-	#elif TARGET_OS_EMBEDDED 
-		ds->OS = "iOS embedded OS";
-		ds->valid = '1'; 
-
-	#elif TARGET_IPHONE_SIMULATOR 
-		ds->OS = "iOS simulator OS";
-		ds->valid = '1'; 
-
-	#elif TARGET_OS_IPHONE 
-		ds->OS = "iPhone OS";
-		ds->valid = '1'; 
-
-	#elif TARGET_OS_MAC
-		ds->OS = "MAC OS";
-		ds->valid = '1'; 
-	
-	#elif__ANDROID__ 
-		ds->OS = "Android OS";
-		ds->valid = '1';
-
-	#elif __unix__
-		ds->OS = "Unix OS";
-		ds->valid = '1'; 
-
-	#elif __sun 
-		ds->OS = "Solaris OS";
-		ds->valid = '1';
-
-	#elif __hpux 
-		ds->OS = "HP UX OS";
-		ds->valid = '1';
-
-	#elif BSD 
-		ds->OS = "Solaris OS";
-		ds->valid = '1';
-
-	#elif __DragonFly__ 
-		ds->OS = "DragonFly BSD OS";
-		ds->valid = '1';
-
-	#elif __FreeBSD__ 
-		ds->OS = "FreeBSD OS";
-		ds->valid = '1';
-
-	#elif __NetBSD__ 
-		ds->OS = "Net BSD OS";
-		ds->valid = '1';
-
-	#elif __OpenBSD__ 
-		ds->OS = "BSD OS";
-		ds->valid = '1';
-
-	#else 
-		ds->valid = '0'; 
-	#endif 
+	struct utsname name;
+	if(uname(&name)) exit(-1);
+	strncpy(ds->OS, name.sysname, 16);
+	ds->valid = '1';
+	return ds;
  }
 
-int readInt(char buf[4]) {
-	int num = atoi(buf);
-	printf("num %d\n", num);
- 	int swapped = ((num>>24)&0xff) | // move byte 3 to byte 0
-                    ((num<<8)&0xff0000) | // move byte 1 to byte 2
-                    ((num>>8)&0xff00) | // move byte 2 to byte 1
-                    ((num<<24)&0xff000000); 
-	return swapped;
+int receive_one_byte(int client_socket, char *cur_char)
+{
+    ssize_t bytes_received = 0;
+	while (bytes_received != 1)
+	{
+		bytes_received = recv(client_socket, cur_char, 1, 0);
+	} 
+	
+	return 1;
+}
+
+int receiveFully(int client_socket, char *buffer, int length)
+{
+	char *cur_char = buffer;
+	ssize_t bytes_received = 0;
+	while (bytes_received != length)
+	{
+	    receive_one_byte(client_socket, cur_char);
+	    cur_char++;
+	    bytes_received++;
+	}
+	
+	return 1;
+}
+
+void printBinaryArray(char *buffer, int length)
+{
+    int i=0;
+    while (i<length)
+    {
+		printf(" %c ", buffer[i]);
+		i++;
+	}
+	
+	printf("\n");
+}
+
+int toInteger32(char *bytes)
+{
+	int tmp = (bytes[0] << 24) + 
+	          (bytes[1] << 16) + 
+	          (bytes[2] << 8) + 
+	          bytes[3];
+   
+	return tmp;
+}
+
+char* intToByte(int n) {
+	char *bytes = (char*)malloc(4);
+	bytes[0] = (n >> 24) & 0xFF;
+	bytes[1] = (n >> 16) & 0xFF;
+	bytes[2] = (n >> 8) & 0xFF;
+	bytes[3] = n & 0xFF;
+	return bytes;
 }
 
  void *CmdProcessor(void *arg)
 {
-	printf("anu\n");
-	char buff_out[1024];
 	char buff_in[1024];
-	int rlen;
 	char * localtime;
 	char * localos;
 	int n;
 	client_t *cli = (client_t *)arg;
 	while ((n = recv(cli->connfd, buff_in, sizeof buff_in, 0)) > 0) {
-            //fwrite(buff_in, sizeof(char), n, cli->connfd);
-            printf("Received %d bytess\n", n);
-			char *buffer = malloc(99 + 1);
-			memcpy(buffer, buff_in, 99);
-			buffer[99] = 0;
-			int i;
-			while(i < 100) 
-			{
-				printf("%c", buffer[i]);
+			char cmdID[100];
+			for (int i = 0; i < 100; i++) {
+				cmdID[i] = buff_in[i];
 			}
-			/*int i;
-			char CmdID[100];
-			strncpy(CmdID, buff_in, 100);
-			char CmdLength[4];
-			strncpy(CmdLength, buff_in+100, 4);
-			int value = readInt(CmdLength);*/
-			//printf("buffer %s %s\n", htonl(buffer));
-    }
-	/*while (1)
-	{
-		
-		printf("anu\n");
-		rlen = read(cli->connfd, buff_in, sizeof(buff_in) - 1);
-		char CmdID[100];
-		strncpy(CmdID, buff_in, 100);
-		printf("buffer value %s\n", ntohl(CmdID));
-		printf("buffer length %d\n", rlen);
-		buff_in[rlen] = '\0';
-		buff_out[0] = '\0';
-		strip_newline(buff_in);
-		char *command = strtok(buff_in, " ");
-		printf("%s\n", command);
-		if (strcmp(command, "GetLocalTime") == 0) {
-			GET_LOCAL_TIME *dt;
-			GetLocalTime(dt);
-			printf("time %d\n", dt->time);
-		} else if (strcmp(command, "GetLocalOS") == 0) {
 			GET_LOCAL_OS *ds;
-			GetLocalOS(ds);
-			printf("os %s\n", ds->OS);
-		}
-		//snprintf(buff_out, sizeof(buff_out), "[%s] %s\r\n", cli->name, buff_in);
-		char *hello = "hello";
-		//send(cli->connfd, hello, strlen(hello), 0);
-		write(cli->connfd, hello, strlen(hello));
-		printf("hello sent\n");
-	}*/
+			GET_LOCAL_TIME *dt;
+			if (strncmp(cmdID, "GetLocalOS", 10) == 0) {
+				ds = GetLocalOS(ds);
+				
+			} else if (strncmp(cmdID, "GetLocalTime", 12) == 0) {	
+				dt = GetLocalTime(dt);
+			} else {
+				return NULL;
+			}
+	 		char packet_buf[4];
+			int j = 0; 
+			for (int i = 100; i < 104; i++) {
+				packet_buf[j] = buff_in[i];
+				j++;
+			}
+			int packet_len = toInteger32(packet_buf);
+			char buff_out[packet_len];
+			bzero(buff_out, sizeof buff_out);
+			if(ds) {
+				for(int i = 0; i < 16; i++) {
+					buff_out[i] = ds->OS[i];
+				}
+				buff_out[17] = ds->valid;
+			}
+			if (dt) {
+				char bytes[4];
+				memcpy(bytes, (char*)&(dt->time),sizeof(int));
+				for(int i = 0; i < 4; i++) {
+					buff_out[i] = bytes[i];
+				}
+				buff_out[4] = dt->valid;
+			}
+			send(cli->connfd, buff_out, packet_len, 0);
+    }
 	return NULL;
 }
 
@@ -206,13 +184,6 @@ int main(int argc, char const *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	// Forcefully attaching socket to the port 8080
-	/*if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, 
-												&opt, sizeof(opt))) 
-	{ 
-		perror("setsockopt"); 
-		exit(EXIT_FAILURE); 
-	} */
 	address.sin_family = AF_INET;
 	address.sin_addr.s_addr = htonl(INADDR_ANY);
 	address.sin_port = htons(PORT);
@@ -244,16 +215,6 @@ int main(int argc, char const *argv[])
 		cli->connfd = new_socket;
 		pthread_create(&tid, NULL, &CmdProcessor, (void *)cli);
 	}
-	/*int i=0;
-	while (i<10)
-	{
-		send(new_socket, hello, strlen(hello), 0);
-		printf("Hello message sent\n");
-		i++;
-		bzero(buffer, 1024);
-		valread = read( new_socket , buffer, 1024);
-		printf("%s\n",buffer );
-	}*/
 
 	return 0;
 }

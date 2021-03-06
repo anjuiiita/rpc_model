@@ -10,12 +10,12 @@ public class c_int {
         return ByteBuffer.wrap(buf).order(java.nio.ByteOrder.LITTLE_ENDIAN).getInt();
     }
     public void setValue(byte[] b) {
-        System.arraycopy(b, 0, buf, 0, 4);
+        System.arraycopy(b, 0, buf, 0, b.length);
     }
-    public void setValue(int v) {
+    /*public void setValue(int v) {
         byte temp[] = intToByte(v);
         System.arraycopy(temp, 0, buf, 0, 4);
-    }
+    }*/
 
     public byte[] toByte() {
         return this.buf;
